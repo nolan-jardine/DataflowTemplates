@@ -33,6 +33,7 @@ import org.apache.beam.sdk.coders.CoderRegistry;
 import org.apache.beam.sdk.coders.KvCoder;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
+import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.CreateDisposition;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.WriteDisposition;
 import org.apache.beam.sdk.io.gcp.bigquery.WriteResult;
@@ -155,6 +156,12 @@ public class KafkaToBigQuery {
     ValueProvider<String> getOutputDeadletterTable();
 
     void setOutputDeadletterTable(ValueProvider<String> value);
+
+    @Description("This determines whether or not to use the logical types defined in Avro schemas.")
+    @Default.Boolean(false)
+    Boolean getUseAvroLogicalTypes();
+
+    void setUseAvroLogicalTypes(Boolean value);
   }
 
   /**
@@ -227,11 +234,16 @@ public class KafkaToBigQuery {
     /*
      * Step #3: Write the successful records out to BigQuery
      */
+    Write<PCollection> write =  BigQueryIO.writeTableRows();
+
+    if (options.getUseAvroLogicalTypes())
+      write = write.useAvroLogicalTypes();
+
     transformOut
         .get(TRANSFORM_OUT)
         .apply(
             "WriteSuccessfulRecords",
-            BigQueryIO.writeTableRows()
+            write
                 .withoutValidation()
                 .withCreateDisposition(CreateDisposition.CREATE_NEVER)
                 .withWriteDisposition(WriteDisposition.WRITE_APPEND)

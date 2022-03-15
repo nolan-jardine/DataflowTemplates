@@ -35,6 +35,7 @@ import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.coders.CoderRegistry;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
+import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.CreateDisposition;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.WriteDisposition;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryInsertError;
@@ -190,6 +191,12 @@ public class PubSubToBigQuery {
     ValueProvider<String> getOutputDeadletterTable();
 
     void setOutputDeadletterTable(ValueProvider<String> value);
+
+    @Description("This determines whether or not to use the logical types defined in Avro schemas.")
+    @Default.Boolean(false)
+    Boolean getUseAvroLogicalTypes();
+
+    void setUseAvroLogicalTypes(Boolean value);
   }
 
   /**
@@ -261,17 +268,22 @@ public class PubSubToBigQuery {
     /*
      * Step #3: Write the successful records out to BigQuery
      */
+    Write<PCollection> write =  BigQueryIO.writeTableRows();
+
+    if (options.getUseAvroLogicalTypes())
+      write = write.useAvroLogicalTypes();
+
     WriteResult writeResult =
         convertedTableRows
             .get(TRANSFORM_OUT)
             .apply(
                 "WriteSuccessfulRecords",
-                BigQueryIO.writeTableRows()
+                write
                     .withoutValidation()
                     .withCreateDisposition(CreateDisposition.CREATE_NEVER)
                     .withWriteDisposition(WriteDisposition.WRITE_APPEND)
                     .withExtendedErrorInfo()
-                    .withMethod(BigQueryIO.Write.Method.STREAMING_INSERTS)
+                    .withMethod(Write.Method.STREAMING_INSERTS)
                     .withFailedInsertRetryPolicy(InsertRetryPolicy.retryTransientErrors())
                     .to(options.getOutputTableSpec()));
 
