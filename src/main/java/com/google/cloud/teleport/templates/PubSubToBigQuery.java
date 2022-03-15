@@ -268,7 +268,7 @@ public class PubSubToBigQuery {
     /*
      * Step #3: Write the successful records out to BigQuery
      */
-    Write<PCollection> write =  BigQueryIO.writeTableRows();
+    Write<TableRow> write = BigQueryIO.writeTableRows();
 
     if (options.getUseAvroLogicalTypes())
       write = write.useAvroLogicalTypes();
